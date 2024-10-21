@@ -1,3 +1,4 @@
+import os
 import argparse
 from datetime import datetime
 from pathlib import Path
@@ -57,6 +58,21 @@ def find_yearmonth(revision: str) -> str:
     return extract_yearmonth(find_timestamp(revision))
 
 
+def count_files(path: Path, folders: bool = False,):
+    count = 0
+
+    for item in os.listdir(path):
+        item_path = os.path.join(path, item)
+
+        if os.path.isdir(item_path):
+            # Recursive call for subdirectories
+            count += count_files(item_path)
+        else:
+            count += 1  # Increment count for files
+
+    return count
+
+
 def main(page: str, limit: int, data_dir: Path):
     """
     Downloads the main page (with revisions) for the given page title.
@@ -74,10 +90,12 @@ def main(page: str, limit: int, data_dir: Path):
         if not revision_path.exists():
             revision_path.parent.mkdir(parents=True, exist_ok=True)
         revision_path.write_text(wiki_revision)
-    
-    print("Done!") # You should call count_revisions() here and print the number of revisions
-                   # You should also pass an 'update' argument so that you can decide whether
-                   # to update and refresh or whether to simply count the revisions.   
+
+    # You should call count_revisions() here and print the number of revisions
+    print(count_files(data_dir))
+    print("Done!")
+    # You should also pass an 'update' argument so that you can decide whether
+    # to update and refresh or whether to simply count the revisions.
 
 
 def construct_path(page_name: str, save_dir: Path, wiki_revision: str) -> Path:
