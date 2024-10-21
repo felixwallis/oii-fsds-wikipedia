@@ -58,27 +58,43 @@ def find_yearmonth(revision: str) -> str:
     return extract_yearmonth(find_timestamp(revision))
 
 
-def count_files(path: Path, folders: bool = False,):
-    count = 0
+def count_files(path: Path, folders: bool = True):
+    file_count = 0
+    folder_count = 0
 
     for item in os.listdir(path):
         item_path = os.path.join(path, item)
 
         if os.path.isdir(item_path):
-            # Recursive call for subdirectories
-            count += count_files(item_path)
+            folder_count += 1
+
+            # Recursive call for subdirectories, return both counts
+            sub_file_count, sub_folder_count,  = count_files(
+                item_path, folders)
+
+            file_count += sub_file_count
+            folder_count += sub_folder_count
         else:
-            count += 1  # Increment count for files
+            file_count += 1  # Increment count for files
 
-    return count
+    if not folders:
+        return file_count
+
+    return file_count, folder_count
 
 
-def main(page: str, limit: int, data_dir: Path):
+def main(page: str, limit: int, data_dir: Path, update: bool = False):
     """
     Downloads the main page (with revisions) for the given page title.
     Organizes the revisions into a folder structure like
     <page_name>/<year>/<month>/<revision_id>.xml
     """
+    # You should pass an 'update' argument so that you can decide whether
+    # to update and refresh or whether to simply count the revisions.
+    if not update:
+        print(f"Counted revisions: {count_files(data_dir)}")
+        return
+
     print(f"Downloading {limit} revisions of {page} to {data_dir}")
     raw_revisions = download_page_w_revisions(page, limit=limit)
     validate_page(page, page_xml=raw_revisions)
@@ -92,10 +108,8 @@ def main(page: str, limit: int, data_dir: Path):
         revision_path.write_text(wiki_revision)
 
     # You should call count_revisions() here and print the number of revisions
-    print(count_files(data_dir))
-    print("Done!")
-    # You should also pass an 'update' argument so that you can decide whether
-    # to update and refresh or whether to simply count the revisions.
+    print("Done!\n",
+          f"Total revisions downloaded (files, folders): {count_files(data_dir)}")
 
 
 def construct_path(page_name: str, save_dir: Path, wiki_revision: str) -> Path:
@@ -126,5 +140,12 @@ if __name__ == "__main__":
         default=10,
         help="Number of revisions to download",
     )
+    parser.add_argument(
+        "--update",
+        type=bool,
+        default=True,
+        help="Update the revisions for the given page",
+    )
     args = parser.parse_args()
-    main(page=args.page, limit=args.limit, data_dir=DATA_DIR)
+    main(page=args.page, limit=args.limit,
+         data_dir=DATA_DIR, update=args.update)
